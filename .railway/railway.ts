@@ -55,7 +55,8 @@ export default defineRailway(() => {
       // This environment's own database: production here (skipped), the PR's copy in a PR environment.
       DATABASE_URL: db.env.DATABASE_URL,
       SOURCE_ENVIRONMENT: 'production',
-      SEED_ENVIRONMENT_PATTERN: '*-pr-*',
+      // Environments the seeder may overwrite: Railway's PR environment names only.
+      SEED_ENVIRONMENT_REGEX: '(^|-)pr-([a-z0-9]+-)?[0-9]+$',
       // Production's bucket as plain values, set by setup/link-seeder.sh. Not references:
       // each environment gets its own bucket, so a reference would point a PR environment
       // at an empty one. Not sealed: sealed variables are not copied into PR environments.

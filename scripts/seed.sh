@@ -5,10 +5,10 @@
 source "$(dirname "$0")/lib.sh"
 
 env_name=${RAILWAY_ENVIRONMENT_NAME:-}
-# Glob matched against the environment name. Railway names PR environments <base>-pr-<number>.
-pattern=${SEED_ENVIRONMENT_PATTERN:-*-pr-*}
-# shellcheck disable=SC2053 # $pattern is a glob on purpose
-if [[ "$env_name" == "${SOURCE_ENVIRONMENT:-production}" ]] || [[ "$env_name" != $pattern ]]; then
+# Railway names PR environments <project>-pr-<number>, or pr-<hash>-<number> when that name is taken.
+# Railway sets no variable that marks a PR environment, so the name is the signal.
+pattern=${SEED_ENVIRONMENT_REGEX:-(^|-)pr-([a-z0-9]+-)?[0-9]+$}
+if [[ "$env_name" == "${SOURCE_ENVIRONMENT:-production}" ]] || ! [[ "$env_name" =~ $pattern ]]; then
   # Never touch production, staging or any environment not named like a PR environment.
   log info seed_skipped "environment ${env_name:-unset} does not match $pattern"
   exit 0

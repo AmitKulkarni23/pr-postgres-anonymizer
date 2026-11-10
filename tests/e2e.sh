@@ -55,7 +55,7 @@ out=$(run -e RAILWAY_ENVIRONMENT_NAME=shop-pr-7 "$img" 2>&1)
 check "should do nothing when the masker runs outside production" '[[ $out == *mask_skipped* ]]'
 
 echo "seeder"
-for env in production staging; do
+for env in production staging pr-preview; do
   out=$(run "${seed_env[@]}" -e RAILWAY_ENVIRONMENT_NAME=$env "$img" /app/seed.sh 2>&1)
   check "should not touch the database when the environment is $env" '[[ $out == *seed_skipped* ]]'
 done
@@ -63,7 +63,7 @@ check "should leave the database empty when skipped" '[[ $(psql_on e2e-pr -c "SE
 
 # An app that ran its migrations before the seeder: the masked dump replaces them.
 psql_on e2e-pr -q -c "CREATE TABLE customers (id int)"
-out=$(run "${seed_env[@]}" -e RAILWAY_ENVIRONMENT_NAME=shop-pr-7 "$img" /app/seed.sh 2>&1) && rc=0 || rc=$?
+out=$(run "${seed_env[@]}" -e RAILWAY_ENVIRONMENT_NAME=pr-362a25-7 "$img" /app/seed.sh 2>&1) && rc=0 || rc=$?
 check "should restore the masked dump when the environment is a PR environment" '[[ $rc -eq 0 && $out == *seed_done* ]]'
 [[ $rc -eq 0 ]] || echo "$out"
 
