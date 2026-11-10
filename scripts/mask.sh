@@ -2,6 +2,7 @@
 # Masker (cron): dump the source database, mask it inside a throwaway local
 # Postgres with PostgreSQL Anonymizer, and upload the masked dump to the bucket.
 # Production data never leaves this container unmasked.
+# shellcheck source=scripts/lib.sh
 source "$(dirname "$0")/lib.sh"
 
 SOURCE_ENVIRONMENT=${SOURCE_ENVIRONMENT:-production}

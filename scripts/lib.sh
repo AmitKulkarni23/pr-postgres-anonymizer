@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared helpers for mask.sh and seed.sh. Sourced, never run directly.
 set -euo pipefail
 
@@ -22,7 +23,7 @@ require() {
   done
 }
 
-# S3 over curl's built-in SigV4 signing, path-style URLs (Railway Buckets and MinIO both accept them).
+# S3 over curl's built-in SigV4 signing, path-style URLs (Railway Buckets accept them).
 s3_url() {
   printf '%s/%s/%s' "${S3_ENDPOINT%/}" "$S3_BUCKET" "$1"
 }

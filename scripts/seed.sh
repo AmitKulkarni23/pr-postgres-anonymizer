@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Seeder (runs once per deploy, then exits): restore the latest masked dump
 # into this environment's Postgres. Only ever runs in PR environments.
+# shellcheck source=scripts/lib.sh
 source "$(dirname "$0")/lib.sh"
 
 env_name=${RAILWAY_ENVIRONMENT_NAME:-}
 # Glob matched against the environment name. Railway names PR environments <base>-pr-<number>.
 pattern=${SEED_ENVIRONMENT_PATTERN:-*-pr-*}
+# shellcheck disable=SC2053 # $pattern is a glob on purpose
 if [[ "$env_name" == "${SOURCE_ENVIRONMENT:-production}" ]] || [[ "$env_name" != $pattern ]]; then
   # Never touch production, staging or any environment not named like a PR environment.
   log info seed_skipped "environment ${env_name:-unset} does not match $pattern"
