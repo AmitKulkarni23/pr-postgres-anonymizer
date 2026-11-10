@@ -10,7 +10,7 @@ SECURITY LABEL FOR anon ON COLUMN public.customers.first_name
 SECURITY LABEL FOR anon ON COLUMN public.customers.last_name
   IS 'MASKED WITH FUNCTION anon.dummy_last_name()';
 SECURITY LABEL FOR anon ON COLUMN public.customers.phone
-  IS 'MASKED WITH FUNCTION anon.partial(phone, 3, ''-XXX-XXX-'', 4)';
+  IS 'MASKED WITH FUNCTION anon.dummy_phone_number()';
 
 SECURITY LABEL FOR anon ON COLUMN public.addresses.street_address
   IS 'MASKED WITH FUNCTION anon.dummy_street_name()';

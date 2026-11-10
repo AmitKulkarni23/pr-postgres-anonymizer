@@ -1,4 +1,4 @@
-# One image, two services: the masker (scripts/mask.sh) and the seeder (scripts/seed.sh).
+# One image, two services: the masker (scripts/schedule.sh runs scripts/mask.sh daily) and the seeder (scripts/seed.sh).
 # PostgreSQL Anonymizer on Postgres 18; pg_dump 18 can dump any older server.
 FROM registry.gitlab.com/dalibo/postgresql_anonymizer:3.3.2
 
@@ -10,4 +10,4 @@ COPY scripts/ /app/
 
 # Replace the Postgres server entrypoint: these are one-shot jobs.
 ENTRYPOINT []
-CMD ["/app/mask.sh"]
+CMD ["/app/schedule.sh"]

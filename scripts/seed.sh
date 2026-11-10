@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 # Seeder (runs once per deploy, then exits): restore the latest masked dump
 # into this environment's Postgres. Only ever runs in PR environments.
+# shellcheck source=scripts/lib.sh
 source "$(dirname "$0")/lib.sh"
 
 env_name=${RAILWAY_ENVIRONMENT_NAME:-}
-# Glob matched against the environment name. Railway names PR environments <base>-pr-<number>.
-pattern=${SEED_ENVIRONMENT_PATTERN:-*-pr-*}
-if [[ "$env_name" == "${SOURCE_ENVIRONMENT:-production}" ]] || [[ "$env_name" != $pattern ]]; then
+# Railway names PR environments <project>-pr-<number>, or pr-<hash>-<number> when that name is taken.
+# Railway sets no variable that marks a PR environment, so the name is the signal.
+pattern=${SEED_ENVIRONMENT_REGEX:-(^|-)pr-([a-z0-9]+-)?[0-9]+$}
+if [[ "$env_name" == "${SOURCE_ENVIRONMENT:-production}" ]] || ! [[ "$env_name" =~ $pattern ]]; then
   # Never touch production, staging or any environment not named like a PR environment.
   log info seed_skipped "environment ${env_name:-unset} does not match $pattern"
   exit 0
 fi
 
+[[ -n "${S3_BUCKET:-}" ]] || die config_missing "S3_BUCKET is not set: give the seeder production's bucket with setup/link-seeder.sh (README, Setup step 3)"
 require DATABASE_URL S3_ENDPOINT S3_BUCKET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY
 started=$SECONDS
 

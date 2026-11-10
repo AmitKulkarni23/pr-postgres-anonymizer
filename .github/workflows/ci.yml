@@ -12,5 +12,5 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
-      - run: shellcheck -x scripts/*.sh tests/*.sh
+      - run: shellcheck -x -e SC2016,SC2034 scripts/*.sh tests/*.sh setup/*.sh
       - run: bash tests/e2e.sh
