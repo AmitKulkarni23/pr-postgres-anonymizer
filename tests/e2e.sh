@@ -14,7 +14,7 @@ pass() { printf '  ok   %s\n' "$1"; }
 fail() { printf '  FAIL %s\n' "$1"; failures=$((failures + 1)); }
 check() { if eval "$2"; then pass "$1"; else fail "$1"; fi; }
 
-cleanup() { docker rm -f e2e-prod e2e-pr e2e-s3 >/dev/null 2>&1 || true; docker network rm "$net" >/dev/null 2>&1 || true; }
+cleanup() { docker rm -f e2e-prod e2e-pr e2e-s3 e2e-sched >/dev/null 2>&1 || true; docker network rm "$net" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 cleanup
 
@@ -53,6 +53,20 @@ check "should publish when every detected column is masked or allowed" '[[ $rc -
 
 out=$(run -e RAILWAY_ENVIRONMENT_NAME=shop-pr-7 "$img" 2>&1)
 check "should do nothing when the masker runs outside production" '[[ $out == *mask_skipped* ]]'
+
+echo "schedule"
+out=$(run -e RAILWAY_ENVIRONMENT_NAME=shop-pr-7 "$img" /app/schedule.sh 2>&1)
+check "should exit at once when the masker service runs outside production" '[[ $out == *mask_skipped* ]]'
+
+docker run -d --name e2e-sched --platform linux/amd64 --network "$net" "${s3_env[@]}" "${mask_env[@]}" \
+  -e ALLOW_UNMASKED="public.addresses.city,public.addresses.country" -e MASK_AT_UTC=03:00 "$img" /app/schedule.sh >/dev/null
+for _ in $(seq 1 120); do docker logs e2e-sched 2>&1 | grep -q mask_next_run && break; sleep 1; done
+out=$(docker logs e2e-sched 2>&1)
+check "should mask once on deploy and schedule the next run when started in production" '[[ $out == *mask_published*mask_next_run*T03:00:00Z* ]]'
+started=$SECONDS
+docker stop -t 30 e2e-sched >/dev/null
+check "should stop promptly when Railway sends SIGTERM" '(( SECONDS - started < 10 ))'
+docker rm e2e-sched >/dev/null
 
 echo "seeder"
 for env in production staging pr-preview; do

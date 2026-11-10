@@ -14,6 +14,7 @@ if [[ "$env_name" == "${SOURCE_ENVIRONMENT:-production}" ]] || ! [[ "$env_name" 
   exit 0
 fi
 
+[[ -n "${S3_BUCKET:-}" ]] || die config_missing "S3_BUCKET is not set: give the seeder production's bucket with setup/link-seeder.sh (README, Setup step 3)"
 require DATABASE_URL S3_ENDPOINT S3_BUCKET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY
 started=$SECONDS
 

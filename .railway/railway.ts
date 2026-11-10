@@ -21,20 +21,19 @@ export default defineRailway(() => {
     source: repo,
     build,
     deploy: {
-      startCommand: '/app/mask.sh',
-      // Nightly at 03:00 UTC. Railway skips a run while the previous one is still active.
-      cronSchedule: '0 3 * * *',
-      restartPolicyType: 'NEVER',
+      // Masks on deploy, then daily at MASK_AT_UTC (default 03:00). A loop, not a Railway cron:
+      // template generation drops cron schedules (decisions.md, D10). Exits at once outside production.
+      startCommand: '/app/schedule.sh',
+      restartPolicyType: 'ON_FAILURE',
     },
+    // Only references and user input here. Template generation drops literal values, so
+    // SOURCE_ENVIRONMENT, STRICT and MASK_AT_UTC use the scripts' defaults unless set by hand.
     env: {
       SOURCE_DATABASE_URL: db.env.DATABASE_URL,
-      // The only environment the masker reads from; it exits immediately everywhere else.
-      SOURCE_ENVIRONMENT: 'production',
       // SQL SECURITY LABEL rules, see demo/rules.sql. Set once in Railway (multiline).
       MASKING_RULES: preserve(),
       // Columns detection flags but that are not personal data: schema.table.column, comma-separated.
       ALLOW_UNMASKED: preserve(),
-      STRICT: 'true',
       S3_ENDPOINT: ref(dumps, 'ENDPOINT'),
       S3_BUCKET: ref(dumps, 'BUCKET'),
       S3_REGION: ref(dumps, 'REGION'),
@@ -54,9 +53,6 @@ export default defineRailway(() => {
     env: {
       // This environment's own database: production here (skipped), the PR's copy in a PR environment.
       DATABASE_URL: db.env.DATABASE_URL,
-      SOURCE_ENVIRONMENT: 'production',
-      // Environments the seeder may overwrite: Railway's PR environment names only.
-      SEED_ENVIRONMENT_REGEX: '(^|-)pr-([a-z0-9]+-)?[0-9]+$',
       // Production's bucket as plain values, set by setup/link-seeder.sh. Not references:
       // each environment gets its own bucket, so a reference would point a PR environment
       // at an empty one. Not sealed: sealed variables are not copied into PR environments.
