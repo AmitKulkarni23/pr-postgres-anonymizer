@@ -56,11 +56,14 @@ export default defineRailway(() => {
       DATABASE_URL: db.env.DATABASE_URL,
       SOURCE_ENVIRONMENT: 'production',
       SEED_ENVIRONMENT_PATTERN: '*-pr-*',
-      S3_ENDPOINT: ref(dumps, 'ENDPOINT'),
-      S3_BUCKET: ref(dumps, 'BUCKET'),
-      S3_REGION: ref(dumps, 'REGION'),
-      S3_ACCESS_KEY_ID: ref(dumps, 'ACCESS_KEY_ID'),
-      S3_SECRET_ACCESS_KEY: ref(dumps, 'SECRET_ACCESS_KEY'),
+      // Production's bucket as plain values, set by setup/link-seeder.sh. Not references:
+      // each environment gets its own bucket, so a reference would point a PR environment
+      // at an empty one. Not sealed: sealed variables are not copied into PR environments.
+      S3_ENDPOINT: preserve(),
+      S3_BUCKET: preserve(),
+      S3_REGION: preserve(),
+      S3_ACCESS_KEY_ID: preserve(),
+      S3_SECRET_ACCESS_KEY: preserve(),
     },
   })
 
