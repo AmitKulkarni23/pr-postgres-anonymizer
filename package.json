@@ -1,0 +1,13 @@
+{
+  "name": "pr-postgres-anonymizer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bash tests/e2e.sh"
+  },
+  "devDependencies": {
+    "railway": "^3.16.0",
+    "typescript": "^5.9.3"
+  }
+}
