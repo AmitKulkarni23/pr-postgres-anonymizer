@@ -1,17 +1,17 @@
 # Deploy and Host PR Postgres Anonymizer with Railway
 
-PR Postgres Anonymizer fills every Railway PR environment's Postgres with a masked copy of production. On deploy and then every night, the masker dumps production and masks emails, names, phones and addresses with PostgreSQL Anonymizer, then stores the dump in a Railway Bucket. Each new PR environment restores that dump. Reviewers get realistic data and no real customers.
+PR Postgres Anonymizer fills every Railway PR environment's Postgres with a masked copy of production. On deploy and then every night, the masker dumps production and masks emails, names, phones and addresses with PostgreSQL Anonymizer, then stores the dump in a Railway Bucket. Each new PR environment restores that dump. Reviewers see realistic data without any real customer records.
 
 ## About Hosting PR Postgres Anonymizer
 
-Railway PR environments copy your services, but their databases start empty. Copying production in is not safe, because preview URLs are public. This template adds two small services and a bucket next to your existing Postgres. The **masker** runs in production, once on deploy and then daily at 03:00 UTC. It runs `pg_dump`, loads the dump into a throwaway Postgres inside its own container, applies your masking rules and uploads the masked dump. Unmasked data never leaves that container. The **seeder** runs once when a PR environment is created. It downloads the masked dump and restores it into that PR environment's own Postgres, then exits. Strict mode refuses to publish while any column that looks like personal data has no masking rule.
+Railway PR environments copy your services, but their databases start empty. Copying production in is not safe, because preview URLs are public. This template adds two small services and a bucket next to your existing Postgres. The masker runs in production, once on deploy and then daily at 03:00 UTC. It runs `pg_dump`, loads the dump into a throwaway Postgres inside its own container, applies your masking rules and uploads the masked dump. Unmasked data never leaves that container. The seeder runs once when a PR environment is created. It downloads the masked dump and restores it into that PR environment's own Postgres, then exits. Strict mode refuses to publish while any column that looks like personal data has no masking rule.
 
 ## Common Use Cases
 
-- Preview a PR against production-shaped data: real row counts, real foreign keys, real edge cases.
+- Preview a PR against data with production's row counts, foreign keys and edge cases.
 - Reproduce "works in prod, broken in preview" bugs without handing customer data to reviewers.
 - Give contractors, design reviewers or QA a live preview that contains no personal data.
-- Keep demo and preview environments from going stale: a fresh masked copy every night.
+- Keep demo and preview data current, since the masker makes a fresh copy every night.
 
 ## Dependencies for PR Postgres Anonymizer Hosting
 
@@ -45,19 +45,17 @@ SECURITY LABEL FOR anon ON COLUMN public.customers.last_name
   IS 'MASKED WITH FUNCTION anon.dummy_last_name()';
 ```
 
-See [`demo/rules.sql`](demo/rules.sql) for a full example and the [function reference](https://postgresql-anonymizer.readthedocs.io/en/stable/masking_functions/) for everything you can use.
+See [`demo/rules.sql`](https://github.com/AmitKulkarni23/pr-postgres-anonymizer/blob/main/demo/rules.sql) for a full example and the [function reference](https://postgresql-anonymizer.readthedocs.io/en/stable/masking_functions/) for everything you can use.
 
 ### Why Deploy PR Postgres Anonymizer on Railway?
 
-Railway is a singular platform to deploy your infrastructure stack. Railway will host your infrastructure so you don't have to deal with configuration, while allowing you to vertically and horizontally scale it.
-
-By deploying PR Postgres Anonymizer on Railway, you are one step closer to supporting a complete full-stack application with minimal burden. Host your servers, databases, AI agents, and more on Railway.
+The masker, the seeder and the bucket run in the same project as your app and its database. The masker reads production over Railway's private network, Railway creates and deletes the PR environments, and the dump lives in a Railway Bucket. There is no separate server, cron host or storage account to run.
 
 ## Setup
 
 1. In the project that holds your production Postgres, add the template (canvas → Create → Template). When asked, paste your masking rules into `MASKING_RULES`, and enter `${{Postgres.DATABASE_URL}}` for the masker's `SOURCE_DATABASE_URL` and the seeder's `DATABASE_URL` (use your database service's name if it is not `Postgres`). The template brings no database of its own.
 2. The masker runs as soon as it deploys. Check its logs. If strict mode lists unmasked columns, add rules for them, or list them in `ALLOW_UNMASKED` if they are not personal data. A redeploy runs it again.
-3. Give the seeder production's bucket coordinates as **plain values**. Either run `bash setup/link-seeder.sh` from a directory linked to the project, or copy the five values from the bucket's Credentials tab into the seeder's `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. Do not use references and do not seal them (see below).
+3. Give the seeder production's bucket coordinates as **plain values**. Either run [`setup/link-seeder.sh`](https://github.com/AmitKulkarni23/pr-postgres-anonymizer/blob/main/setup/link-seeder.sh) from a clone of this repo that you have linked to the project with `railway link`, or copy the five values from the bucket's Credentials tab into the seeder's `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. Do not use references and do not seal them (see below).
 4. Open a PR. Its environment's Postgres is seeded within a minute.
 
 ### Why the seeder needs plain values
@@ -114,4 +112,4 @@ bash tests/e2e.sh          # Docker: masks a demo database and proves nothing le
 railway config plan        # then railway config apply
 ```
 
-Architecture, decisions and failure modes are in [`docs/system-specs/`](docs/system-specs/).
+Architecture, decisions and failure modes are in [`docs/system-specs/`](https://github.com/AmitKulkarni23/pr-postgres-anonymizer/tree/main/docs/system-specs).
