@@ -37,8 +37,7 @@ pr-postgres-anonymizer/
 ├── demo/                   # demo production data and its masking rules (tests and the demo project)
 ├── tests/e2e.sh            # end-to-end in Docker
 ├── docs/
-│   ├── system-specs/       # architecture, decisions, failure modes
-│   └── task-specs/         # TASK_INDEX.md lists tasks in order
+│   └── system-specs/       # architecture, decisions, failure modes
 ├── Dockerfile
 ├── package.json            # railway (IaC SDK) + typescript, dev only
 ├── CLAUDE.md
@@ -93,11 +92,9 @@ All Railway configuration lives in `.railway/railway.ts`. No ClickOps after the 
 
 **Do not run any browser automation (playwright-cli or claude-in-chrome) unless the user explicitly asks for it.**
 
-## Specs and Tasks
+## Specs
 
 - **System specs** (`docs/system-specs/`): `architecture.md`, `decisions.md`, `failure-modes.md`. Read before changing a script or the infra, and keep them current. Diagrams are Mermaid.
-- **Tasks**: `docs/task-specs/TASK_INDEX.md` lists every task in order. When a task is done, strike its line through (`~~...~~`) in the same commit as its last change.
-- Steps marked **asks the user** are hard stops: ask and wait.
 
 ## Git Conventions
 
