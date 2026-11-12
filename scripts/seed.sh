@@ -35,7 +35,7 @@ fi
 dump=$(mktemp)
 trap 'rm -f "$dump"' EXIT
 s3 --output "$dump" "$(s3_url "$(dump_key)")" >/dev/null \
-  || die download_failed "no masked dump at $(dump_key) in bucket $S3_BUCKET yet. Run the masker once in production (railway cron run)."
+  || die download_failed "no masked dump at $(dump_key) in bucket $S3_BUCKET yet. Redeploy the masker in production to run it now."
 
 # One transaction: a failed restore leaves the database as it was, and the marker is only set on success.
 {

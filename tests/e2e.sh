@@ -41,17 +41,17 @@ mask_env=(-e RAILWAY_ENVIRONMENT_NAME=production -e SOURCE_DATABASE_URL=postgres
 seed_env=(-e DATABASE_URL=postgres://postgres:pw@e2e-pr:5432/postgres)
 
 echo "masker"
-out=$(run "${mask_env[@]}" "$img" 2>&1) && rc=0 || rc=$?
+out=$(run "${mask_env[@]}" "$img" /app/mask.sh 2>&1) && rc=0 || rc=$?
 check "should refuse to publish when detected columns have no rule" '[[ $rc -ne 0 && $out == *unmasked_columns*public.addresses.city* ]]'
 
-out=$(run "${mask_env[@]}" -e MASKING_RULES="SECURITY LABEL FOR anon ON COLUMN public.nope.x IS 'MASKED WITH VALUE NULL';" "$img" 2>&1) && rc=0 || rc=$?
+out=$(run "${mask_env[@]}" -e MASKING_RULES="SECURITY LABEL FOR anon ON COLUMN public.nope.x IS 'MASKED WITH VALUE NULL';" "$img" /app/mask.sh 2>&1) && rc=0 || rc=$?
 check "should fail loudly when a masking rule is invalid" '[[ $rc -ne 0 && $out == *rules_failed* ]]'
 
-out=$(run "${mask_env[@]}" -e ALLOW_UNMASKED="public.addresses.city, public.addresses.country" "$img" 2>&1) && rc=0 || rc=$?
+out=$(run "${mask_env[@]}" -e ALLOW_UNMASKED="public.addresses.city, public.addresses.country" "$img" /app/mask.sh 2>&1) && rc=0 || rc=$?
 check "should publish when every detected column is masked or allowed" '[[ $rc -eq 0 && $out == *mask_published* ]]'
 [[ $rc -eq 0 ]] || echo "$out"
 
-out=$(run -e RAILWAY_ENVIRONMENT_NAME=shop-pr-7 "$img" 2>&1)
+out=$(run -e RAILWAY_ENVIRONMENT_NAME=shop-pr-7 "$img" /app/mask.sh 2>&1)
 check "should do nothing when the masker runs outside production" '[[ $out == *mask_skipped* ]]'
 
 echo "schedule"
