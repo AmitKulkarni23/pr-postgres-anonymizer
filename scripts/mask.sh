@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Masker (cron): dump the source database, mask it inside a throwaway local
+# Masker (one run, started daily by schedule.sh): dump the source database, mask it inside a throwaway local
 # Postgres with PostgreSQL Anonymizer, and upload the masked dump to the bucket.
 # Production data never leaves this container unmasked.
 # shellcheck source=scripts/lib.sh
@@ -7,7 +7,7 @@ source "$(dirname "$0")/lib.sh"
 
 SOURCE_ENVIRONMENT=${SOURCE_ENVIRONMENT:-production}
 if [[ "${RAILWAY_ENVIRONMENT_NAME:-}" != "$SOURCE_ENVIRONMENT" ]]; then
-  # PR environments copy this cron too; there it has nothing to do.
+  # PR environments copy the masker too; there it has nothing to do.
   log info mask_skipped "environment ${RAILWAY_ENVIRONMENT_NAME:-unset} is not $SOURCE_ENVIRONMENT"
   exit 0
 fi

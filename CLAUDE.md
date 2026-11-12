@@ -4,7 +4,7 @@ A Railway template that fills every PR environment's Postgres with a masked copy
 
 ## What It Does
 
-A nightly **masker** cron in production runs `pg_dump`, loads the dump into a throwaway Postgres inside its own container and applies PostgreSQL Anonymizer masking rules. It then uploads the masked dump to a Railway Bucket. A **seeder** runs once when a PR environment is created. It restores that dump into the PR environment's own Postgres, then exits.
+The **masker** in production runs on deploy and then daily: it runs `pg_dump`, loads the dump into a throwaway Postgres inside its own container and applies PostgreSQL Anonymizer masking rules. It then uploads the masked dump to a Railway Bucket. A **seeder** runs once when a PR environment is created. It restores that dump into the PR environment's own Postgres, then exits.
 
 ## Design Principles
 
@@ -37,8 +37,7 @@ pr-postgres-anonymizer/
 ├── demo/                   # demo production data and its masking rules (tests and the demo project)
 ├── tests/e2e.sh            # end-to-end in Docker
 ├── docs/
-│   ├── system-specs/       # architecture, decisions, failure modes
-│   └── task-specs/         # TASK_INDEX.md lists tasks in order
+│   └── system-specs/       # architecture, decisions, failure modes
 ├── Dockerfile
 ├── package.json            # railway (IaC SDK) + typescript, dev only
 ├── CLAUDE.md
@@ -65,7 +64,7 @@ bash tests/e2e.sh                 # Docker end-to-end (about 2 minutes, amd64 im
 docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x -e SC2016,SC2034 scripts/*.sh tests/*.sh setup/*.sh
 railway config plan               # preview infra changes
 railway config apply              # apply them
-railway cron run --service masker --yes   # run the masker now
+railway redeploy --service masker --yes   # run the masker now
 bash setup/link-seeder.sh         # after a fresh deploy or a bucket credential change
 ```
 
@@ -73,7 +72,7 @@ bash setup/link-seeder.sh         # after a fresh deploy or a bucket credential 
 
 - `tests/e2e.sh` runs the real image against a demo "production" database and a fake S3. It asserts strict mode, invalid rules, environment guards, row counts, foreign keys, sequences, idempotent reseeding, and that no original value appears in the PR database.
 - GitHub Actions runs the typecheck, shellcheck and the e2e test on every push and PR.
-- Railway itself (PR environment naming, per-environment buckets, cron) can only be tested on Railway: the demo project `pr-postgres-anonymizer` exists for that.
+- Railway itself (PR environment naming, per-environment buckets, template generation) can only be tested on Railway: the demo project `pr-postgres-anonymizer` exists for that.
 - Write the test first, see it fail, then implement.
 
 ## Environments
@@ -93,11 +92,9 @@ All Railway configuration lives in `.railway/railway.ts`. No ClickOps after the 
 
 **Do not run any browser automation (playwright-cli or claude-in-chrome) unless the user explicitly asks for it.**
 
-## Specs and Tasks
+## Specs
 
 - **System specs** (`docs/system-specs/`): `architecture.md`, `decisions.md`, `failure-modes.md`. Read before changing a script or the infra, and keep them current. Diagrams are Mermaid.
-- **Tasks**: `docs/task-specs/TASK_INDEX.md` lists every task in order. When a task is done, strike its line through (`~~...~~`) in the same commit as its last change.
-- Steps marked **asks the user** are hard stops: ask and wait.
 
 ## Git Conventions
 

@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
   subgraph production
-    PG[(Postgres)] -->|pg_dump, private network| M[masker cron 03:00 UTC]
+    PG[(Postgres)] -->|pg_dump, private network| M[masker: on deploy, then daily 03:00 UTC]
     M -->|masked dump| B[(Bucket pr-seed-dumps)]
   end
   subgraph "PR environment (pr-…-N)"
@@ -16,14 +16,14 @@ flowchart LR
 
 | Component | Source | Runs | Exits |
 |---|---|---|---|
-| masker | `Dockerfile`, start `/app/mask.sh` | cron `0 3 * * *`, restart NEVER | after upload, or on the first error |
+| masker | `Dockerfile`, start `/app/schedule.sh` (runs `/app/mask.sh`) | on deploy, then daily at `MASK_AT_UTC`, restart ON_FAILURE | never in production (a failed run keeps the previous dump); straight away elsewhere |
 | seeder | same image, start `/app/seed.sh` | every deploy, restart NEVER | after restore, or straight away when guarded |
 | pr-seed-dumps | Railway Bucket | — | — |
 | Postgres | Railway Postgres 18 | always | — |
 
 ## Masker flow (`scripts/mask.sh`)
 
-1. Exit 0 unless `RAILWAY_ENVIRONMENT_NAME == SOURCE_ENVIRONMENT` (PR environments copy the cron too).
+1. Exit 0 unless `RAILWAY_ENVIRONMENT_NAME == SOURCE_ENVIRONMENT` (PR environments copy the masker too).
 2. `pg_dump --format=plain --no-owner --no-privileges` of `SOURCE_DATABASE_URL`.
 3. `initdb` a throwaway Postgres in a temp dir: Unix socket only, no fsync, trust auth.
 4. Create database `src`, preload `anon`, `CREATE EXTENSION anon`, `anon.init()` (loads the fake-data and identifier dictionaries).
@@ -46,11 +46,11 @@ flowchart LR
 - Each environment, PR environments included, gets its own bucket with its own name and credentials. A bucket reference resolves to the PR's empty bucket.
 - PR environment names: `<project>-pr-<N>`, or `pr-<hash>-<N>` when that name was used recently.
 - No runtime variable marks an environment as a PR environment. The API has `Environment.isEphemeral`, but the seeder has no API token.
-- `railway cron run` triggers the masker on demand. A one-shot service with restart NEVER shows as "Completed" whether it exited 0 or 1. Check its logs.
+- Redeploying the masker runs it on demand. The seeder is one-shot with restart NEVER, so it shows as "Completed" whether it exited 0 or 1. Check its logs.
 - Template generation (`railway templates create`) keeps references and `secret()` values, but drops literal variable values and the cron schedule.
 
 ## Configuration
 
-- `.railway/railway.ts` is the source of truth for services, the bucket, start commands, cron and variables.
+- `.railway/railway.ts` is the source of truth for services, the bucket, start commands and variables.
 - The seeder's `S3_*` values are `preserve()`, set once by `setup/link-seeder.sh` (decisions.md, D3).
 - The PR environments toggle is a project setting. IaC cannot express it.
