@@ -46,3 +46,7 @@ The work is `pg_dump`, `psql` and one HTTP PUT. A runtime would add an install s
 ## D10. The masker schedules itself instead of using a Railway cron
 
 Template generation drops cron schedules, so a published template's masker would never run. `scripts/schedule.sh` masks once on deploy, then sleeps until `MASK_AT_UTC` each day. It exits at once outside `SOURCE_ENVIRONMENT`, so PR environments keep no idle masker. A failed run logs a warning and keeps the previous dump.
+
+## D11. Users enter the database references on deploy
+
+Railway refuses to publish a template whose variables reference a service outside it, so the template cannot default `SOURCE_DATABASE_URL` and `DATABASE_URL` to `${{Postgres.DATABASE_URL}}`. Both are required inputs, and their descriptions say what to enter. A reference typed at deploy time resolves like a default one. `.railway/railway.ts` keeps the references, because the demo project has its own `Postgres`.
