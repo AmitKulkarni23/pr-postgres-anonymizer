@@ -1,10 +1,10 @@
 # Deploy and Host PR Postgres Anonymizer with Railway
 
-PR Postgres Anonymizer fills every Railway PR environment's Postgres with a masked copy of production. Each night a cron dumps production and masks emails, names, phones and addresses with PostgreSQL Anonymizer, then stores the dump in a Railway Bucket. Each new PR environment restores that dump. Reviewers get realistic data and no real customers.
+PR Postgres Anonymizer fills every Railway PR environment's Postgres with a masked copy of production. On deploy and then every night, the masker dumps production and masks emails, names, phones and addresses with PostgreSQL Anonymizer, then stores the dump in a Railway Bucket. Each new PR environment restores that dump. Reviewers get realistic data and no real customers.
 
 ## About Hosting PR Postgres Anonymizer
 
-Railway PR environments copy your services, but their databases start empty. Copying production in is not safe, because preview URLs are public. This template adds two small services and a bucket next to your existing Postgres. The **masker** runs nightly in production. It runs `pg_dump`, loads the dump into a throwaway Postgres inside its own container, applies your masking rules and uploads the masked dump. Unmasked data never leaves that container. The **seeder** runs once when a PR environment is created. It downloads the masked dump and restores it into that PR environment's own Postgres, then exits. Strict mode refuses to publish while any column that looks like personal data has no masking rule.
+Railway PR environments copy your services, but their databases start empty. Copying production in is not safe, because preview URLs are public. This template adds two small services and a bucket next to your existing Postgres. The **masker** runs in production, once on deploy and then daily at 03:00 UTC. It runs `pg_dump`, loads the dump into a throwaway Postgres inside its own container, applies your masking rules and uploads the masked dump. Unmasked data never leaves that container. The **seeder** runs once when a PR environment is created. It downloads the masked dump and restores it into that PR environment's own Postgres, then exits. Strict mode refuses to publish while any column that looks like personal data has no masking rule.
 
 ## Common Use Cases
 
@@ -21,14 +21,14 @@ Railway PR environments copy your services, but their databases start empty. Cop
 ### Deployment Dependencies
 
 - [PostgreSQL Anonymizer](https://postgresql-anonymizer.readthedocs.io/) 3.3.2, from the official Dalibo image on Postgres 18.
-- [Railway PR environments](https://docs.railway.com/environments), [cron jobs](https://docs.railway.com/cron-jobs) and [Buckets](https://docs.railway.com/storage-buckets).
+- [Railway PR environments](https://docs.railway.com/environments) and [Buckets](https://docs.railway.com/storage-buckets).
 
 ### Implementation Details
 
 ```
 production                                     PR environment (pr-…-42)
 ┌──────────┐ pg_dump  ┌─────────────────────┐   ┌────────┐ restore ┌──────────┐
-│ Postgres │ ───────▶ │ masker (cron 03:00) │   │ seeder │ ──────▶ │ Postgres │
+│ Postgres │ ───────▶ │ masker (daily 03:00)│   │ seeder │ ──────▶ │ Postgres │
 └──────────┘          │ throwaway Postgres  │   └────────┘         │ (empty)  │
                       │ + anon masking rules│       ▲              └──────────┘
                       └─────────┬───────────┘       │ download
@@ -55,17 +55,18 @@ By deploying PR Postgres Anonymizer on Railway, you are one step closer to suppo
 
 ## Setup
 
-1. Deploy the template into the project that holds your production Postgres.
-2. Paste your masking rules into the masker's `MASKING_RULES` variable.
+1. In the project that holds your production Postgres, add the template (canvas → Create → Template), and paste your masking rules into `MASKING_RULES` when asked. The template brings no database of its own. It reads the service named `Postgres`, so if yours has another name, change `SOURCE_DATABASE_URL` and `DATABASE_URL` to point at it.
+2. The masker runs as soon as it deploys. Check its logs. If strict mode lists unmasked columns, add rules for them, or list them in `ALLOW_UNMASKED` if they are not personal data. A redeploy runs it again.
 3. Give the seeder production's bucket coordinates as **plain values**. Either run `bash setup/link-seeder.sh` from a directory linked to the project, or copy the five values from the bucket's Credentials tab into the seeder's `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. Do not use references and do not seal them (see below).
-4. Run the masker once: `railway cron run --service masker --yes`. If strict mode lists unmasked columns, add rules for them, or list them in `ALLOW_UNMASKED` if they are not personal data.
-5. Open a PR. Its environment's Postgres is seeded within a minute.
+4. Open a PR. Its environment's Postgres is seeded within a minute.
 
 ### Why the seeder needs plain values
 
 Every Railway environment gets its own bucket. A reference like `${{pr-seed-dumps.BUCKET}}` therefore resolves to a new, empty bucket inside a PR environment. Plain variables are copied into PR environments unchanged, so the seeder there still reads production's bucket. Sealed variables are not copied at all. The bucket only ever holds masked dumps. The trade-off: code in a PR environment can read and overwrite that bucket. Railway does not deploy PRs from people outside your workspace, which limits who could.
 
 ## Variables
+
+Only `MASKING_RULES` is asked for on deploy. Every variable with a plain default below is unset, so the scripts use that default. Set one only to change it.
 
 **masker**
 
@@ -75,7 +76,8 @@ Every Railway environment gets its own bucket. A reference like `${{pr-seed-dump
 | `MASKING_RULES` | required | `SECURITY LABEL FOR anon` rules, one per column (multiline SQL). |
 | `ALLOW_UNMASKED` | empty | `schema.table.column` list that detection flags but that is not personal data. |
 | `STRICT` | `true` | `false` publishes anyway and logs a warning listing the unmasked columns. |
-| `SOURCE_ENVIRONMENT` | `production` | The only environment the masker runs in. |
+| `MASK_AT_UTC` | `03:00` | Daily run time, `HH:MM` UTC. The masker also runs on every deploy. |
+| `SOURCE_ENVIRONMENT` | `production` | The only environment the masker runs in. Elsewhere it exits at once. |
 | `S3_*` | bucket references | Bucket the masked dump is uploaded to. |
 
 **seeder**
