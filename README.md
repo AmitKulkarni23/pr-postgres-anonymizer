@@ -55,7 +55,7 @@ By deploying PR Postgres Anonymizer on Railway, you are one step closer to suppo
 
 ## Setup
 
-1. In the project that holds your production Postgres, add the template (canvas → Create → Template), and paste your masking rules into `MASKING_RULES` when asked. The template brings no database of its own. It reads the service named `Postgres`, so if yours has another name, change `SOURCE_DATABASE_URL` and `DATABASE_URL` to point at it.
+1. In the project that holds your production Postgres, add the template (canvas → Create → Template). When asked, paste your masking rules into `MASKING_RULES`, and enter `${{Postgres.DATABASE_URL}}` for the masker's `SOURCE_DATABASE_URL` and the seeder's `DATABASE_URL` (use your database service's name if it is not `Postgres`). The template brings no database of its own.
 2. The masker runs as soon as it deploys. Check its logs. If strict mode lists unmasked columns, add rules for them, or list them in `ALLOW_UNMASKED` if they are not personal data. A redeploy runs it again.
 3. Give the seeder production's bucket coordinates as **plain values**. Either run `bash setup/link-seeder.sh` from a directory linked to the project, or copy the five values from the bucket's Credentials tab into the seeder's `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`. Do not use references and do not seal them (see below).
 4. Open a PR. Its environment's Postgres is seeded within a minute.
@@ -66,13 +66,13 @@ Every Railway environment gets its own bucket. A reference like `${{pr-seed-dump
 
 ## Variables
 
-Only `MASKING_RULES` is asked for on deploy. Every variable with a plain default below is unset, so the scripts use that default. Set one only to change it.
+`MASKING_RULES`, `SOURCE_DATABASE_URL` and `DATABASE_URL` are asked for on deploy. Every variable with a plain default below is unset, so the scripts use that default. Set one only to change it.
 
 **masker**
 
 | Variable | Default | Description |
 |---|---|---|
-| `SOURCE_DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Production database to dump. Read over the private network. |
+| `SOURCE_DATABASE_URL` | required, e.g. `${{Postgres.DATABASE_URL}}` | Production database to dump. Read over the private network. |
 | `MASKING_RULES` | required | `SECURITY LABEL FOR anon` rules, one per column (multiline SQL). |
 | `ALLOW_UNMASKED` | empty | `schema.table.column` list that detection flags but that is not personal data. |
 | `STRICT` | `true` | `false` publishes anyway and logs a warning listing the unmasked columns. |
@@ -84,7 +84,7 @@ Only `MASKING_RULES` is asked for on deploy. Every variable with a plain default
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | This environment's own database, the one to fill. |
+| `DATABASE_URL` | required, e.g. `${{Postgres.DATABASE_URL}}` | This environment's own database, the one to fill. |
 | `S3_*` | set at setup | Production's bucket as plain values (setup step 3). |
 | `SEED_ENVIRONMENT_REGEX` | `(^\|-)pr-([a-z0-9]+-)?[0-9]+$` | Environments the seeder may overwrite. Matches Railway's PR environment names only. |
 | `SOURCE_ENVIRONMENT` | `production` | Never seeded, whatever the regex says. |
